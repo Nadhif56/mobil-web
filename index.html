@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apex V12 Hybrid - 3D Supercar Experience</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background-color: #08090b;
+      color: #ffffff;
+      font-family: 'Rajdhani', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #webgl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* UI Overlay */
+    .hud-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 28px 36px;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .logo-container h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 28px;
+      letter-spacing: 4px;
+      font-weight: 900;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #fff, #78f830);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2px;
+    }
+
+    .logo-container p {
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: #8892a0;
+      text-transform: uppercase;
+    }
+
+    .specs-badge {
+      display: flex;
+      gap: 20px;
+      background: rgba(18, 22, 28, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 24px;
+      border-radius: 8px;
+    }
+
+    .spec-item {
+      text-align: center;
+    }
+
+    .spec-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #78f830;
+    }
+
+    .spec-label {
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: #9aa5b4;
+      text-transform: uppercase;
+    }
+
+    /* Footer Controls */
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .panel {
+      background: rgba(15, 18, 24, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
+    }
+
+    .panel-title {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #9aa5b4;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      font-weight: 700;
+    }
+
+    /* Colors */
+    .color-swatches {
+      display: flex;
+      gap: 12px;
+    }
+
+    .swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .swatch:hover {
+      transform: scale(1.15);
+    }
+
+    .swatch.active {
+      border-color: #ffffff;
+      transform: scale(1.18);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Action Buttons */
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .start-button {
+      padding: 12px 22px;
+      background: #78f830;
+      border-color: #78f830;
+      color: #0b0d10;
+      box-shadow: 0 0 22px rgba(120, 248, 48, 0.28);
+      font-size: 15px;
+    }
+
+    .start-button:hover {
+      background: #a4ff70;
+      border-color: #a4ff70;
+    }
+
+    #driving-hud {
+      display: none;
+      position: absolute;
+      inset: 0;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 28px 36px;
+      pointer-events: none;
+    }
+
+    body.driving footer,
+    body.driving .hint {
+      display: none;
+    }
+
+    body.driving #driving-hud {
+      display: flex;
+    }
+
+    .speedometer {
+      min-width: 150px;
+      padding: 14px 20px;
+      border: 1px solid rgba(120, 248, 48, 0.45);
+      border-radius: 12px;
+      background: rgba(8, 12, 14, 0.78);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 0 24px rgba(120, 248, 48, 0.12);
+    }
+
+    .speed-value {
+      color: #78f830;
+      font: 700 36px 'Orbitron', sans-serif;
+      line-height: 1.1;
+    }
+
+    .speed-unit {
+      margin-top: 4px;
+      color: #9aa5b4;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+
+    .control-hint {
+      margin-top: 8px;
+      color: #9aa5b4;
+      font-size: 10px;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    .drift-indicator {
+      display: none;
+      margin-top: 8px;
+      color: #ffb13b;
+      font: 700 13px 'Orbitron', sans-serif;
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(255, 177, 59, 0.8);
+    }
+
+    body.drifting .drift-indicator {
+      display: block;
+      animation: drift-pulse 0.45s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift-pulse {
+      to { opacity: 0.55; transform: scale(1.05); }
+    }
+
+    .drive-controls {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .steering-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .drive-button {
+      width: 58px;
+      height: 58px;
+      justify-content: center;
+      padding: 0;
+      border-radius: 14px;
+      background: rgba(18, 24, 28, 0.82);
+      font-size: 22px;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .drive-button.pressed {
+      background: #78f830;
+      color: #0b0d10;
+      box-shadow: 0 0 20px rgba(120, 248, 48, 0.5);
+    }
+
+    .drive-button.handbrake {
+      width: 74px;
+      color: #ffb13b;
+      font-size: 12px;
+    }
+
+    .btn {
+      background: rgba(30, 36, 46, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      padding: 10px 18px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: #78f830;
+      color: #0b0d10;
+      border-color: #78f830;
+      box-shadow: 0 0 18px rgba(120, 248, 48, 0.45);
+    }
+
+    .btn.active {
+      background: #78f830;
+      color: #0b0d10;
+      border-color: #78f830;
+    }
+
+    /* Instruction Hint */
+    .hint {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    @media (max-width: 860px) {
+      .specs-badge { display: none; }
+      footer { flex-direction: column; align-items: stretch; }
+      .hint { display: none; }
+      .hud-layer { padding: 18px; }
+      #driving-hud { padding: 18px; }
+      .button-group { flex-wrap: wrap; }
+      .panel { padding: 12px 14px; }
+      .logo-container h1 { font-size: 21px; letter-spacing: 3px; }
+      .logo-container p { font-size: 10px; letter-spacing: 1px; }
+      .start-button { padding: 10px 14px; font-size: 12px; }
+      .speedometer { min-width: 112px; padding: 10px 14px; }
+      .speed-value { font-size: 28px; }
+      .drive-controls { gap: 8px; }
+      .steering-controls { gap: 6px; }
+      .drive-button { width: 50px; height: 50px; border-radius: 12px; }
+      .drive-button.handbrake { width: 62px; font-size: 10px; }
+    }
+
+    @media (max-width: 520px) {
+      .hud-layer { padding: 14px; }
+      #driving-hud { padding: 14px; }
+      .logo-container p { max-width: 155px; line-height: 1.3; }
+      .drive-controls { flex-direction: column; align-items: flex-end; }
+      .drive-button { width: 46px; height: 46px; }
+      .drive-button.handbrake { width: 58px; height: 42px; }
+    }
+  </style>
+
+  <!-- Three.js Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <canvas id="webgl-canvas"></canvas>
+
+  <div class="hud-layer">
+    <header class="interactive">
+      <div class="logo-container">
+        <h1>APEX V12</h1>
+        <p>Aero Hybrid Concept &bull; Hypercar Vision</p>
+      </div>
+
+      <div class="specs-badge">
+        <div class="spec-item">
+          <div class="spec-val">1015 HP</div>
+          <div class="spec-label">Power Output</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-val">2.5s</div>
+          <div class="spec-label">0 - 100 KM/H</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-val">350+</div>
+          <div class="spec-label">Top Speed (KM/H)</div>
+        </div>
+      </div>
+      <button class="btn start-button" id="btn-start" type="button">▶ Mulai</button>
+    </header>
+
+    <div class="hint">Tahan klik kiri & geser untuk rotasi &bull; Scroll untuk Zoom</div>
+
+    <div id="driving-hud" aria-label="Kontrol mengemudi">
+      <div class="speedometer" aria-live="polite">
+        <div class="speed-value"><span id="speed-value">0</span></div>
+        <div class="speed-unit">KM/JAM</div>
+        <div class="control-hint">WASD / PANAH · SPACE: DRIFT</div>
+        <div class="drift-indicator">DRIFT!</div>
+      </div>
+      <div class="drive-controls">
+        <div class="steering-controls">
+          <button class="btn drive-button" type="button" data-control="left" aria-label="Belok kiri">◀</button>
+          <button class="btn drive-button" type="button" data-control="right" aria-label="Belok kanan">▶</button>
+        </div>
+        <button class="btn drive-button handbrake" type="button" data-control="handbrake">DRIFT</button>
+        <div class="steering-controls">
+          <button class="btn drive-button" type="button" data-control="brake" aria-label="Rem">▼</button>
+          <button class="btn drive-button" type="button" data-control="accelerate" aria-label="Gas">▲</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="interactive">
+      <!-- Body Paint Colors -->
+      <div class="panel">
+        <div class="panel-title">Warna Cat Bodi (Clearcoat Gloss)</div>
+        <div class="color-swatches">
+          <div class="swatch active" style="background: #39e612;" data-color="0x39e612" title="Verde Neon"></div>
+          <div class="swatch" style="background: #ff5e00;" data-color="0xff5e00" title="Arancio Orange"></div>
+          <div class="swatch" style="background: #0077ff;" data-color="0x0077ff" title="Electric Blue"></div>
+          <div class="swatch" style="background: #ff1133;" data-color="0xff1133" title="Rosso Corsa"></div>
+          <div class="swatch" style="background: #ffea00;" data-color="0xffea00" title="Giallo Yellow"></div>
+          <div class="swatch" style="background: #17171a;" data-color="0x17171a" title="Nero Noctis"></div>
+        </div>
+      </div>
+
+      <!-- Quick Camera Views -->
+      <div class="panel">
+        <div class="panel-title">Sudut Kamera</div>
+        <div class="button-group">
+          <button class="btn" id="cam-front">Depan</button>
+          <button class="btn" id="cam-side">Samping</button>
+          <button class="btn" id="cam-rear">Belakang</button>
+          <button class="btn" id="cam-top">Atas</button>
+        </div>
+      </div>
+
+      <!-- Action Toggles -->
+      <div class="panel">
+        <div class="panel-title">Fitur Showroom</div>
+        <div class="button-group">
+          <button class="btn active" id="btn-lights">Lampu LED: ON</button>
+          <button class="btn active" id="btn-rotate">Auto Putar</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- SETUP SCENE, CAMERA, & RENDERER ---
+    const canvas = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0c10);
+    scene.fog = new THREE.FogExp2(0x0a0c10, 0.035);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(5.5, 2.2, 5.5);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // Cegah tembus lantai
+    controls.minDistance = 3.5;
+    controls.maxDistance = 14;
+    controls.target.set(0, 0.6, 0);
+
+    // --- PROCEDURAL ENVIRONMENT REFLECTION MAP ---
+    const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256);
+    cubeRenderTarget.texture.type = THREE.HalfFloatType;
+    const cubeCamera = new THREE.CubeCamera(0.1, 10, cubeRenderTarget);
+
+    // Buat Fake Studio Cube untuk refleksi bodi mobil
+    const envScene = new THREE.Scene();
+    const envBoxGeom = new THREE.BoxGeometry(10, 10, 10);
+    const envMaterials = [
+      new THREE.MeshBasicMaterial({ color: 0x222226, side: THREE.BackSide }), // px
+      new THREE.MeshBasicMaterial({ color: 0x222226, side: THREE.BackSide }), // nx
+      new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.BackSide }), // py (Softbox studio atas)
+      new THREE.MeshBasicMaterial({ color: 0x050508, side: THREE.BackSide }), // ny (Lantai gelap)
+      new THREE.MeshBasicMaterial({ color: 0x334455, side: THREE.BackSide }), // pz
+      new THREE.MeshBasicMaterial({ color: 0x111115, side: THREE.BackSide })  // nz
+    ];
+    const envMesh = new THREE.Mesh(envBoxGeom, envMaterials);
+    envScene.add(envMesh);
+    cubeCamera.update(renderer, envScene);
+    scene.environment = cubeRenderTarget.texture;
+
+    // --- PENCAHAYAAN STUDIO ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+
+    const mainKeyLight = new THREE.DirectionalLight(0xffffff, 2.8);
+    mainKeyLight.position.set(6, 8, 5);
+    mainKeyLight.castShadow = true;
+    mainKeyLight.shadow.mapSize.width = 2048;
+    mainKeyLight.shadow.mapSize.height = 2048;
+    mainKeyLight.shadow.bias = -0.0005;
+    mainKeyLight.shadow.camera.near = 1;
+    mainKeyLight.shadow.camera.far = 25;
+    mainKeyLight.shadow.camera.left = -6;
+    mainKeyLight.shadow.camera.right = 6;
+    mainKeyLight.shadow.camera.top = 6;
+    mainKeyLight.shadow.camera.bottom = -6;
+    scene.add(mainKeyLight);
+
+    const blueFillLight = new THREE.DirectionalLight(0x4070ff, 1.6);
+    blueFillLight.position.set(-8, 5, -6);
+    scene.add(blueFillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x78f830, 0.8);
+    rimLight.position.set(0, 4, -8);
+    scene.add(rimLight);
+
+    // --- LANTAI SHOWROOM REFLEKTIF DENGAN GRID ---
+    const floorGeometry = new THREE.PlaneGeometry(60, 60);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x0c0e12,
+      roughness: 0.15,
+      metalness: 0.85,
+      envMapIntensity: 0.6
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Grid halus
+    const grid = new THREE.GridHelper(200, 200, 0x78f830, 0x1d222c);
+    grid.position.y = 0.002;
+    scene.add(grid);
+
+    // --- MATERIAL SISTEM MOBIL (PBR AUTOMOTIVE) ---
+    const carPaintMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(0x39e612), // Verde Neon khas Lamborghini
+      roughness: 0.2,
+      metalness: 0.85,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      reflectivity: 1.0,
+      envMapIntensity: 1.8
+    });
+
+    const carbonMaterial = new THREE.MeshStandardMaterial({
+      color: 0x151618,
+      roughness: 0.35,
+      metalness: 0.5
+    });
+
+    const glassMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x08090a,
+      roughness: 0.05,
+      metalness: 0.1,
+      transmission: 0.6,
+      transparent: true,
+      opacity: 0.88,
+      ior: 1.52
+    });
+
+    const interiorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x121316,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+
+    const chromeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xdddddd,
+      roughness: 0.1,
+      metalness: 0.95
+    });
+
+    const rubberMaterial = new THREE.MeshStandardMaterial({
+      color: 0x151515,
+      roughness: 0.85,
+      metalness: 0.05
+    });
+
+    const brakeBrakeCaliperMaterial = new THREE.MeshStandardMaterial({
+      color: 0x78f830,
+      roughness: 0.3,
+      metalness: 0.6
+    });
+
+    // Lampu Emissive (DRL Y-Shape)
+    const ledFrontMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const ledRearMaterial = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+
+    // --- MEMBANGUN MODEL 3D SUPERCAR (APEX REVUELTO STYLE) ---
+    const carGroup = new THREE.Group();
+    scene.add(carGroup);
+
+    // 1. CHASSIS UTAMA / KABIN TENGAH
+    const cockpitGeom = new THREE.BoxGeometry(1.6, 0.6, 2.4);
+    // Atur vertex atas agar kabin melengkung aerodinamis
+    const posAttr = cockpitGeom.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      let y = posAttr.getY(i);
+      let z = posAttr.getZ(i);
+      let x = posAttr.getX(i);
+      if (y > 0) {
+        posAttr.setX(i, x * 0.72); // Taper ke atas
+        if (z > 0) posAttr.setZ(i, z * 0.75); // Sloping windshield depan
+      }
+    }
+    cockpitGeom.computeVertexNormals();
+    const cockpit = new THREE.Mesh(cockpitGeom, glassMaterial);
+    cockpit.position.set(0, 0.88, -0.15);
+    cockpit.castShadow = true;
+    carGroup.add(cockpit);
+
+    // Atap Bodi Atas Carbon
+    const roofGeom = new THREE.BoxGeometry(1.08, 0.08, 1.4);
+    const roof = new THREE.Mesh(roofGeom, carbonMaterial);
+    roof.position.set(0, 1.18, -0.22);
+    roof.castShadow = true;
+    carGroup.add(roof);
+
+    // 2. KAP MESIN & HIDUNG DEPAN WEDGE
+    const hoodGeom = new THREE.BoxGeometry(1.78, 0.28, 1.7);
+    const hPos = hoodGeom.attributes.position;
+    for (let i = 0; i < hPos.count; i++) {
+      let z = hPos.getZ(i);
+      let y = hPos.getY(i);
+      if (z > 0) { // Bagian hidung depan
+        hPos.setY(i, y * 0.4 - 0.05); // Menukik tajam
+        hPos.setX(i, hPos.getX(i) * 0.82); // Mengerucut
+      }
+    }
+    hoodGeom.computeVertexNormals();
+    const hood = new THREE.Mesh(hoodGeom, carPaintMaterial);
+    hood.position.set(0, 0.62, 1.6);
+    hood.castShadow = true;
+    hood.receiveShadow = true;
+    carGroup.add(hood);
+
+    // Front Splitter / Karbon Bawah
+    const splitterGeom = new THREE.BoxGeometry(1.85, 0.07, 0.8);
+    const splitter = new THREE.Mesh(splitterGeom, carbonMaterial);
+    splitter.position.set(0, 0.32, 2.25);
+    splitter.castShadow = true;
+    carGroup.add(splitter);
+
+    // Winglet sirip samping splitter depan
+    [-0.95, 0.95].forEach(x => {
+      const finGeom = new THREE.BoxGeometry(0.04, 0.2, 0.35);
+      const fin = new THREE.Mesh(finGeom, carbonMaterial);
+      fin.position.set(x, 0.42, 2.45);
+      carGroup.add(fin);
+    });
+
+    // Grille Depan Hexagon Hitam
+    const frontGrilleGeom = new THREE.BoxGeometry(1.4, 0.22, 0.1);
+    const frontGrille = new THREE.Mesh(frontGrilleGeom, carbonMaterial);
+    frontGrille.position.set(0, 0.43, 2.38);
+    carGroup.add(frontGrille);
+
+    // 3. LAMPU DEPAN DRL IKONIK BERBENTUK 'Y' (REVUELTO STYLE)
+    const createYHeadlight = (isRight) => {
+      const yGroup = new THREE.Group();
+      const mult = isRight ? 1 : -1;
+
+      // Garis batang horizontal
+      const bar1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.035, 0.04), ledFrontMaterial);
+      bar1.position.set(0.18 * mult, 0, 0);
+      bar1.rotation.z = 0.2 * mult;
+      yGroup.add(bar1);
+
+      // Cabang atas
+      const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.035, 0.04), ledFrontMaterial);
+      bar2.position.set(0.42 * mult, 0.12, -0.05);
+      bar2.rotation.z = -0.65 * mult;
+      yGroup.add(bar2);
+
+      // Cabang bawah
+      const bar3 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.035, 0.04), ledFrontMaterial);
+      bar3.position.set(0.4 * mult, -0.11, -0.05);
+      bar3.rotation.z = 0.6 * mult;
+      yGroup.add(bar3);
+
+      return yGroup;
+    };
+
+    const leftLight = createYHeadlight(false);
+    leftLight.position.set(-0.52, 0.64, 2.33);
+    leftLight.rotation.y = -0.22;
+    carGroup.add(leftLight);
+
+    const rightLight = createYHeadlight(true);
+    rightLight.position.set(0.52, 0.64, 2.33);
+    rightLight.rotation.y = 0.22;
+    carGroup.add(rightLight);
+
+    // 4. BAGIAN BELAKANG (ENGINE DECK, DIFFUSER, & TAILLIGHTS)
+    const rearDeckGeom = new THREE.BoxGeometry(1.88, 0.42, 1.9);
+    const rPos = rearDeckGeom.attributes.position;
+    for (let i = 0; i < rPos.count; i++) {
+      let z = rPos.getZ(i);
+      let x = rPos.getX(i);
+      if (z < 0) { // Buritan belakang
+        rPos.setX(i, x * 0.94);
+      }
+    }
+    rearDeckGeom.computeVertexNormals();
+    const rearDeck = new THREE.Mesh(rearDeckGeom, carPaintMaterial);
+    rearDeck.position.set(0, 0.72, -1.25);
+    rearDeck.castShadow = true;
+    rearDeck.receiveShadow = true;
+    carGroup.add(rearDeck);
+
+    // Kaca penutup mesin V12 belakang transparan
+    const engineGlass = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.05, 1.1), glassMaterial);
+    engineGlass.position.set(0, 0.93, -1.05);
+    carGroup.add(engineGlass);
+
+    // Spoiler / Sayap Belakang Berdiri Sporty
+    const wingGeom = new THREE.BoxGeometry(2.05, 0.06, 0.42);
+    const rearWing = new THREE.Mesh(wingGeom, carbonMaterial);
+    rearWing.position.set(0, 1.05, -2.25);
+    rearWing.castShadow = true;
+    carGroup.add(rearWing);
+
+    // Penyangga Spoiler Kiri-Kanan
+    [-0.55, 0.55].forEach(x => {
+      const upright = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.25), carbonMaterial);
+      upright.position.set(x, 0.92, -2.2);
+      carGroup.add(upright);
+    });
+
+    // Diffuser Ekstrem Bawah Belakang dengan Sirip Vertikal
+    const diffuserBase = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.14, 0.8), carbonMaterial);
+    diffuserBase.position.set(0, 0.36, -2.05);
+    diffuserBase.rotation.x = -0.15;
+    diffuserBase.castShadow = true;
+    carGroup.add(diffuserBase);
+
+    [-0.7, -0.35, 0, 0.35, 0.7].forEach(x => {
+      const diffuserFin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.6), carbonMaterial);
+      diffuserFin.position.set(x, 0.34, -2.15);
+      diffuserFin.rotation.x = -0.15;
+      carGroup.add(diffuserFin);
+    });
+
+    // Lampu Belakang LED Y-Shape
+    const rearLightLeft = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), ledRearMaterial);
+    rearLightLeft.position.set(-0.55, 0.78, -2.2);
+    rearLightLeft.rotation.z = 0.12;
+    carGroup.add(rearLightLeft);
+
+    const rearLightRight = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), ledRearMaterial);
+    rearLightRight.position.set(0.55, 0.78, -2.2);
+    rearLightRight.rotation.z = -0.12;
+    carGroup.add(rearLightRight);
+
+    // Knalpot Hexagonal Ganda Khas Revuelto (Diposisikan Tinggi di Tengah)
+    [-0.16, 0.16].forEach(x => {
+      const exhaustGeom = new THREE.CylinderGeometry(0.09, 0.09, 0.25, 6);
+      const exhaust = new THREE.Mesh(exhaustGeom, chromeMaterial);
+      exhaust.rotation.x = Math.PI / 2;
+      exhaust.position.set(x, 0.76, -2.22);
+      carGroup.add(exhaust);
+    });
+
+    // 5. BODI SAMPING & LUBANG INTAKE UDARA BESAR
+    [-1, 1].forEach(side => {
+      // Side Skirt Carbon Bawah
+      const sideSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 2.5), carbonMaterial);
+      sideSkirt.position.set(0.96 * side, 0.32, 0.1);
+      carGroup.add(sideSkirt);
+
+      // Intake Udara Samping (Side Scoop)
+      const intakeGeom = new THREE.BoxGeometry(0.15, 0.45, 0.8);
+      const intake = new THREE.Mesh(intakeGeom, carbonMaterial);
+      intake.position.set(0.94 * side, 0.68, -0.45);
+      intake.rotation.y = -0.18 * side;
+      carGroup.add(intake);
+
+      // Spion Tajam Aerodinamis
+      const mirrorStem = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.04), carbonMaterial);
+      mirrorStem.position.set(0.9 * side, 0.85, 0.65);
+      carGroup.add(mirrorStem);
+
+      const mirrorHead = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.12, 0.1), carPaintMaterial);
+      mirrorHead.position.set(1.02 * side, 0.86, 0.65);
+      mirrorHead.rotation.y = -0.2 * side;
+      carGroup.add(mirrorHead);
+    });
+
+    // 6. RODA & VELG SPORTY TINGGI DETAIL
+    const wheels = [];
+    const createWheel = (isFront) => {
+      const wheelGroup = new THREE.Group();
+      const radius = isFront ? 0.42 : 0.45;
+      const width = isFront ? 0.34 : 0.42;
+
+      // Ban Karet
+      const tireGeom = new THREE.CylinderGeometry(radius, radius, width, 36);
+      const tire = new THREE.Mesh(tireGeom, rubberMaterial);
+      tire.rotation.z = Math.PI / 2;
+      tire.castShadow = true;
+      wheelGroup.add(tire);
+
+      // Pelek Luar (Outer Rim)
+      const rimGeom = new THREE.CylinderGeometry(radius * 0.72, radius * 0.72, width + 0.01, 24);
+      const rim = new THREE.Mesh(rimGeom, chromeMaterial);
+      rim.rotation.z = Math.PI / 2;
+      wheelGroup.add(rim);
+
+      // Jari-jari Pelek Sporty (Y-Spoke Design)
+      for (let i = 0; i < 5; i++) {
+        const spokeGeom = new THREE.BoxGeometry(width + 0.015, radius * 0.68, 0.05);
+        const spoke = new THREE.Mesh(spokeGeom, carbonMaterial);
+        spoke.rotation.x = (i * Math.PI) / 2.5;
+        wheelGroup.add(spoke);
+      }
+
+      // Piringan Rem Cakram Berventilasi (Brake Disc)
+      const discGeom = new THREE.CylinderGeometry(radius * 0.55, radius * 0.55, 0.04, 24);
+      const disc = new THREE.Mesh(discGeom, chromeMaterial);
+      disc.rotation.z = Math.PI / 2;
+      disc.position.x = -0.04;
+      wheelGroup.add(disc);
+
+      // Kaliper Rem Berwarna
+      const caliperGeom = new THREE.BoxGeometry(0.12, 0.18, 0.14);
+      const caliper = new THREE.Mesh(caliperGeom, brakeBrakeCaliperMaterial);
+      caliper.position.set(-0.04, radius * 0.35, 0);
+      wheelGroup.add(caliper);
+
+      return wheelGroup;
+    };
+
+    // Pasang 4 Roda
+    const wheelPositions = [
+      { x: -0.96, y: 0.42, z: 1.45, front: true },  // Depan Kiri
+      { x: 0.96, y: 0.42, z: 1.45, front: true },   // Depan Kanan
+      { x: -0.99, y: 0.45, z: -1.35, front: false },// Belakang Kiri
+      { x: 0.99, y: 0.45, z: -1.35, front: false }  // Belakang Kanan
+    ];
+
+    wheelPositions.forEach(pos => {
+      const wheel = createWheel(pos.front);
+      wheel.position.set(pos.x, pos.y, pos.z);
+      if (pos.x > 0) wheel.rotation.y = Math.PI; // Hadapkan pelek keluar
+      wheel.userData.front = pos.front;
+      wheel.userData.side = pos.x > 0 ? Math.PI : 0;
+      carGroup.add(wheel);
+      wheels.push(wheel);
+    });
+
+    // Bayangan Lembut di Bawah Mobil (Fake Ambient Occlusion Shadow Plane)
+    const shadowCanvas = document.createElement('canvas');
+    shadowCanvas.width = 256;
+    shadowCanvas.height = 256;
+    const sCtx = shadowCanvas.getContext('2d');
+    const grad = sCtx.createRadialGradient(128, 128, 20, 128, 128, 120);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+    grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    sCtx.fillStyle = grad;
+    sCtx.fillRect(0, 0, 256, 256);
+
+    const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+    const shadowPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.6, 5.8),
+      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })
+    );
+    shadowPlane.rotation.x = -Math.PI / 2;
+    shadowPlane.position.y = 0.005;
+    scene.add(shadowPlane);
+
+    // --- LOGIKA INTERAKSI UI ---
+    let autoRotate = true;
+    let lightsOn = true;
+    let isDriving = false;
+    let heading = 0;
+    let smokeTimer = 0;
+    const velocity = new THREE.Vector3();
+    const driveInput = {
+      accelerate: false,
+      brake: false,
+      left: false,
+      right: false,
+      handbrake: false
+    };
+
+    const smokeCanvas = document.createElement('canvas');
+    smokeCanvas.width = 64;
+    smokeCanvas.height = 64;
+    const smokeContext = smokeCanvas.getContext('2d');
+    const smokeGradient = smokeContext.createRadialGradient(32, 32, 2, 32, 32, 30);
+    smokeGradient.addColorStop(0, 'rgba(255,255,255,0.65)');
+    smokeGradient.addColorStop(1, 'rgba(255,255,255,0)');
+    smokeContext.fillStyle = smokeGradient;
+    smokeContext.fillRect(0, 0, 64, 64);
+    const smokeTexture = new THREE.CanvasTexture(smokeCanvas);
+    const smokeParticles = [];
+
+    function clearDriveInput() {
+      Object.keys(driveInput).forEach(key => { driveInput[key] = false; });
+      document.querySelectorAll('.drive-button.pressed').forEach(button => button.classList.remove('pressed'));
+    }
+
+    function setDriving(enabled) {
+      isDriving = enabled;
+      clearDriveInput();
+      document.body.classList.toggle('driving', enabled);
+      autoRotate = !enabled;
+      btnRotate.classList.toggle('active', autoRotate);
+      btnRotate.textContent = autoRotate ? 'Auto Putar' : 'Auto Putar: OFF';
+      controls.enabled = !enabled;
+
+      if (enabled) {
+        targetCameraPos = null;
+        document.getElementById('btn-start').textContent = 'Kembali ke Showroom';
+      } else {
+        velocity.set(0, 0, 0);
+        carGroup.position.set(0, 0, 0);
+        carGroup.rotation.set(0, 0, 0);
+        heading = 0;
+        wheels.forEach(wheel => wheel.rotation.set(0, wheel.userData.side, 0));
+        shadowPlane.position.set(0, 0.005, 0);
+        grid.position.set(0, 0.002, 0);
+        controls.target.set(0, 0.6, 0);
+        targetCameraPos = new THREE.Vector3(5.5, 2.2, 5.5);
+        document.getElementById('speed-value').textContent = '0';
+        document.getElementById('btn-start').textContent = '▶ Mulai';
+        document.body.classList.remove('drifting');
+      }
+    }
+
+    document.getElementById('btn-start').addEventListener('click', () => setDriving(!isDriving));
+
+    const keyControls = {
+      ArrowUp: 'accelerate', KeyW: 'accelerate',
+      ArrowDown: 'brake', KeyS: 'brake',
+      ArrowLeft: 'left', KeyA: 'left',
+      ArrowRight: 'right', KeyD: 'right',
+      Space: 'handbrake'
+    };
+
+    window.addEventListener('keydown', event => {
+      const control = keyControls[event.code];
+      if (isDriving && control) {
+        event.preventDefault();
+        driveInput[control] = true;
+      }
+    });
+
+    window.addEventListener('keyup', event => {
+      const control = keyControls[event.code];
+      if (control) driveInput[control] = false;
+    });
+
+    window.addEventListener('blur', clearDriveInput);
+
+    document.querySelectorAll('.drive-button[data-control]').forEach(button => {
+      const control = button.dataset.control;
+      button.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        if (!isDriving) return;
+        driveInput[control] = true;
+        button.classList.add('pressed');
+        button.setPointerCapture(event.pointerId);
+      });
+      const release = () => {
+        driveInput[control] = false;
+        button.classList.remove('pressed');
+      };
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('lostpointercapture', release);
+    });
+
+    function spawnSmoke(localX) {
+      const material = new THREE.SpriteMaterial({
+        map: smokeTexture,
+        color: 0xd5d9dc,
+        transparent: true,
+        opacity: 0.48,
+        depthWrite: false
+      });
+      const particle = new THREE.Sprite(material);
+      const localPosition = new THREE.Vector3(localX, 0.42, -1.42);
+      carGroup.localToWorld(localPosition);
+      particle.position.copy(localPosition);
+      const size = 0.55 + Math.random() * 0.45;
+      particle.scale.set(size, size, 1);
+      scene.add(particle);
+      smokeParticles.push({
+        sprite: particle,
+        life: 0.75,
+        velocity: new THREE.Vector3((Math.random() - 0.5) * 0.8, 0.7 + Math.random() * 0.5, -Math.cos(heading) * 0.8)
+      });
+    }
+
+    function updateDriving(delta) {
+      const forward = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading));
+      const right = new THREE.Vector3(Math.cos(heading), 0, -Math.sin(heading));
+      let forwardSpeed = velocity.dot(forward);
+      const steer = Number(driveInput.right) - Number(driveInput.left);
+      const handbrake = driveInput.handbrake && Math.abs(forwardSpeed) > 3.5;
+
+      if (driveInput.accelerate) velocity.addScaledVector(forward, 13 * delta);
+      if (driveInput.brake) {
+        velocity.addScaledVector(forward, (forwardSpeed > 0.4 ? -19 : -8) * delta);
+      }
+
+      forwardSpeed = velocity.dot(forward);
+      const turnRate = 0.55 + Math.min(Math.abs(forwardSpeed) / 9, 1) * 1.65;
+      heading += steer * turnRate * (handbrake ? 1.5 : 1) * (forwardSpeed < -0.5 ? -1 : 1) * delta;
+
+      const updatedForward = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading));
+      const updatedRight = new THREE.Vector3(Math.cos(heading), 0, -Math.sin(heading));
+      let longitudinal = velocity.dot(updatedForward) * Math.exp(-0.38 * delta);
+      const lateral = velocity.dot(updatedRight) * Math.exp(-(handbrake ? 0.38 : 8) * delta);
+      longitudinal = THREE.MathUtils.clamp(longitudinal, -7, 23);
+      velocity.copy(updatedForward).multiplyScalar(longitudinal)
+        .addScaledVector(updatedRight, lateral);
+
+      carGroup.position.addScaledVector(velocity, delta);
+      heading %= Math.PI * 2;
+      carGroup.rotation.y = heading;
+      wheels.forEach(wheel => {
+        wheel.rotation.x += longitudinal * delta / 0.44;
+        wheel.rotation.y = wheel.userData.side + (wheel.userData.front ? -steer * 0.22 : 0);
+      });
+
+      shadowPlane.position.x = carGroup.position.x;
+      shadowPlane.position.z = carGroup.position.z;
+      grid.position.x = Math.floor((carGroup.position.x + 50) / 100) * 100;
+      grid.position.z = Math.floor((carGroup.position.z + 50) / 100) * 100;
+
+      const speedKmh = Math.round(Math.abs(longitudinal) * 3.6);
+      document.getElementById('speed-value').textContent = speedKmh;
+      document.body.classList.toggle('drifting', handbrake);
+
+      if (handbrake) {
+        smokeTimer -= delta;
+        if (smokeTimer <= 0) {
+          spawnSmoke(-0.82);
+          spawnSmoke(0.82);
+          smokeTimer = 0.075;
+        }
+      } else {
+        smokeTimer = 0;
+      }
+
+      const cameraForward = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading));
+      const chasePosition = carGroup.position.clone()
+        .addScaledVector(cameraForward, -8)
+        .add(new THREE.Vector3(0, 3.4, 0));
+      camera.position.lerp(chasePosition, 1 - Math.exp(-3.5 * delta));
+      controls.target.lerp(carGroup.position.clone().add(new THREE.Vector3(0, 0.7, 0)), 1 - Math.exp(-5 * delta));
+    }
+
+    function updateSmoke(delta) {
+      for (let i = smokeParticles.length - 1; i >= 0; i--) {
+        const particle = smokeParticles[i];
+        particle.life -= delta;
+        particle.sprite.position.addScaledVector(particle.velocity, delta);
+        particle.sprite.scale.multiplyScalar(1 + delta * 0.9);
+        particle.sprite.material.opacity = Math.max(0, particle.life / 0.75) * 0.48;
+        if (particle.life <= 0) {
+          scene.remove(particle.sprite);
+          particle.sprite.material.dispose();
+          smokeParticles.splice(i, 1);
+        }
+      }
+    }
+
+    // 1. Ganti Warna Cat Mobil
+    const swatches = document.querySelectorAll('.swatch');
+    swatches.forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        swatches.forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+        const colorHex = parseInt(swatch.getAttribute('data-color'));
+        carPaintMaterial.color.setHex(colorHex);
+
+        // Ubah warna kaliper rem agar senada jika kuning/hijau/merah
+        brakeBrakeCaliperMaterial.color.setHex(colorHex);
+      });
+    });
+
+    // 2. Toggle Auto-Rotate
+    const btnRotate = document.getElementById('btn-rotate');
+    btnRotate.addEventListener('click', () => {
+      autoRotate = !autoRotate;
+      btnRotate.classList.toggle('active', autoRotate);
+      btnRotate.textContent = autoRotate ? 'Auto Putar' : 'Auto Putar: OFF';
+    });
+
+    // 3. Toggle Lampu LED
+    const btnLights = document.getElementById('btn-lights');
+    btnLights.addEventListener('click', () => {
+      lightsOn = !lightsOn;
+      btnLights.classList.toggle('active', lightsOn);
+      btnLights.textContent = lightsOn ? 'Lampu LED: ON' : 'Lampu LED: OFF';
+
+      ledFrontMaterial.color.setHex(lightsOn ? 0xffffff : 0x222222);
+      ledRearMaterial.color.setHex(lightsOn ? 0xff0022 : 0x330005);
+    });
+
+    // 4. Smooth Camera Views
+    let targetCameraPos = null;
+    function setCameraView(x, y, z) {
+      targetCameraPos = new THREE.Vector3(x, y, z);
+    }
+
+    document.getElementById('cam-front').addEventListener('click', () => setCameraView(2.8, 1.4, 4.6));
+    document.getElementById('cam-side').addEventListener('click', () => setCameraView(5.8, 1.2, 0.0));
+    document.getElementById('cam-rear').addEventListener('click', () => setCameraView(-2.8, 1.6, -4.8));
+    document.getElementById('cam-top').addEventListener('click', () => setCameraView(0.1, 7.8, 0.5));
+
+    // Handle Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- ANIMATION LOOP ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const frameDelta = Math.min(delta, 0.05);
+
+      // Putar mobil secara konstan saat autoRotate aktif
+      if (autoRotate) {
+        carGroup.rotation.y += 0.35 * frameDelta;
+      }
+
+      if (isDriving) {
+        updateDriving(frameDelta);
+      }
+      updateSmoke(frameDelta);
+
+      // Animasi perpindahan kamera halus
+      if (targetCameraPos) {
+        camera.position.lerp(targetCameraPos, 1 - Math.exp(-3.5 * frameDelta));
+        if (camera.position.distanceTo(targetCameraPos) < 0.05) {
+          targetCameraPos = null;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
